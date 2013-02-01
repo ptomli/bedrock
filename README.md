@@ -1,8 +1,9 @@
 # A Solid Foundation
 
 [DropWizard](http://github.com/codahale/dropwizard) provides a fantastic base
-on which you can build REST based services. Big up to @codahale and
-[Yammer](https://www.yammer.com/) for making this available.
+on which you can build REST based services. Big up to
+[@codahale](http://github.com/codahale) and [Yammer](https://www.yammer.com/)
+for making this available.
 
 Bedrock takes this basis, adds some libraries and a bit more glue, and tries to
 make it easy to build services using the technologies I commonly use.
