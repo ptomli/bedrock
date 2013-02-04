@@ -76,7 +76,7 @@
 
 		<hornetq.version>2.2.21.Final</hornetq.version>
 		<spring.version>3.1.4.RELEASE</spring.version>
-		<spring-integration.version>2.1.5.RELEASE</spring-integration.version>
+		<spring-integration.version>2.2.1.RELEASE</spring-integration.version>
 		<spring-security.version>3.1.3.RELEASE</spring-security.version>
 	</properties>
 
