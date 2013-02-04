@@ -2,6 +2,7 @@ package com.github.ptomli.bedrock.spring;
 
 import java.util.Map;
 
+import javax.servlet.Filter;
 import javax.ws.rs.Path;
 import javax.ws.rs.ext.Provider;
 
@@ -12,8 +13,9 @@ import org.springframework.beans.PropertyAccessor;
 import org.springframework.beans.PropertyAccessorFactory;
 import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
-import org.springframework.context.support.AbstractXmlApplicationContext;
+import org.springframework.context.support.AbstractRefreshableConfigApplicationContext;
 import org.springframework.core.env.PropertySource;
+import org.springframework.web.filter.DelegatingFilterProxy;
 
 import com.sun.jersey.spi.inject.InjectableProvider;
 import com.yammer.dropwizard.config.Configuration;
@@ -35,86 +37,104 @@ import com.yammer.metrics.core.HealthCheck;
  * <code>
  * {@literal @}Override
  * public void run(Configuration configuration, Environment environment) {
- *     SpringServiceConfigurer.forContext(ClassPathXmlApplicationContext.class, "classpath:/META-INF/spring/applicationContext.xml")
+ *     SpringServiceConfigurer.forEnvironment(environment)
+ *         .withContext(ClassPathXmlApplicationContext.class, "classpath:/META-INF/spring/applicationContext.xml")
  *         .registerConfigurationPropertySource("dw.", configuration)
  *         .registerConfigurationBean("dw", configuration)
- *         .registerResources(environment);
+ *         .registerSpringSecurityFilter("/*")
+ *         .registerHealthChecks()
+ *         .registerResources();
  * }
  * </code>
  * </pre>
- * 
- * @param <T> the ConfigurableApplicationContext type
  */
-public class SpringServiceConfigurer<T extends ConfigurableApplicationContext> {
+public class SpringServiceConfigurer {
 	private static final Logger LOG = LoggerFactory.getLogger(SpringServiceConfigurer.class);
 
 	/**
-	 * Create a new configurer with the provided ApplicationContext.
+	 * Create a new configurer instance for the given environment.
+	 * 
+	 * @param environment
+	 * @return the configurer
+	 */
+	public static SpringServiceConfigurer forEnvironment(final Environment environment) {
+		return new SpringServiceConfigurer(environment);
+	}
+
+	protected static <C extends ConfigurableApplicationContext> C buildContext(final Class<C> clazz) {
+		try {
+			return clazz.newInstance();
+		}
+		catch (IllegalAccessException ex) {
+			throw new ApplicationContextInstantiationException(ex);
+		}
+		catch (InstantiationException ex) {
+			throw new ApplicationContextInstantiationException(ex);
+		}
+	}
+
+	private final Environment environment;
+	private ConfigurableApplicationContext context;
+
+	protected SpringServiceConfigurer(final Environment environment) {
+		this.environment = environment;
+	}
+
+	/**
+	 * Set the application context.
 	 * 
 	 * @param context
-	 * @return the configurer
+	 * @return this configurer
+	 * @throws IllegalStateException if the application context has already been set
 	 */
-	public static <T extends ConfigurableApplicationContext> SpringServiceConfigurer<T> forContext(T context) {
-		return new SpringServiceConfigurer<T>(context);
-	}
-
-	/**
-	 * Create a new configurer which will instantiate an XML based
-	 * ApplicationContext, using the provided configuration
-	 * locations.
-	 * 
-	 * @param clazz the ApplicationContext class to instantiate
-	 * @param configurations the configuration locations
-	 * @return the configurer
-	 */
-	public static <T extends AbstractXmlApplicationContext> SpringServiceConfigurer<T> forContext(Class<T> clazz, String... configurations) {
-		try {
-			final T context = clazz.newInstance();
-			context.setConfigLocations(configurations);
-			return SpringServiceConfigurer.forContext(context);
+	public SpringServiceConfigurer withContext(final ConfigurableApplicationContext context) {
+		if (this.context != null) {
+			throw new IllegalStateException("context has already been set");
 		}
-		catch (IllegalAccessException ex) {
-			throw new ApplicationContextInstantiationException(ex);
-		}
-		catch (InstantiationException ex) {
-			throw new ApplicationContextInstantiationException(ex);
-		}
-	}
-
-	/**
-	 * Create a new configurer which will instantiate an annotation based
-	 * ApplicationContext, using the provided configuration classes.
-	 * 
-	 * @param clazz the ApplicationContext class to instantiate
-	 * @param configurations the configuration classes
-	 * @return the configurer
-	 */
-	public static <T extends AnnotationConfigApplicationContext> SpringServiceConfigurer<T> forContext(Class<T> clazz, Class<?>... configurations) {
-		try {
-			final T context = clazz.newInstance();
-			context.register(configurations);
-			return SpringServiceConfigurer.forContext(context);
-		}
-		catch (IllegalAccessException ex) {
-			throw new ApplicationContextInstantiationException(ex);
-		}
-		catch (InstantiationException ex) {
-			throw new ApplicationContextInstantiationException(ex);
-		}
-	}
-
-	private T context;
-
-	private SpringServiceConfigurer(T context) {
 		this.context = context;
+		return this;
 	}
 
 	/**
-	 * Return the ApplicationContext.
+	 * Create a new application context of the provided class, using the provided
+	 * configuration locations , and set this as the application context.
 	 * 
-	 * @return the ApplicationContext
+	 * @param clazz the application context class
+	 * @param configurations the context configuration locations
+	 * @return this configurer
+	 * @throws ApplicationContextInstantiationException if there was a problem creating the application context
+	 * @throws IllegalStateException if the application context has already been set
 	 */
-	public T getApplicationContext() {
+	public SpringServiceConfigurer withContext(final Class<? extends AbstractRefreshableConfigApplicationContext> clazz, final String... configurations) {
+		final AbstractRefreshableConfigApplicationContext context = buildContext(clazz);
+		context.setConfigLocations(configurations);
+		return this.withContext(context);
+	}
+
+	/**
+	 * Create a new application context of the provided class, using the provided
+	 * configuration classes, and set this as the application context.
+	 * 
+	 * @param clazz the application context class
+	 * @param configurations the configuration classes
+	 * @return this configurer
+	 * @throws ApplicationContextInstantiationException if there was a problem creating the application context
+	 * @throws IllegalStateException if the application context has already been set
+	 */
+	public SpringServiceConfigurer withContext(final Class<? extends AnnotationConfigApplicationContext> clazz, final Class<?>... configurations) {
+		final AnnotationConfigApplicationContext context = buildContext(clazz);
+		if (configurations.length > 0) {
+			context.register(configurations);
+		}
+		return this.withContext(context);
+	}
+
+	/**
+	 * Return the application context.
+	 * 
+	 * @return the application context
+	 */
+	public ConfigurableApplicationContext getApplicationContext() {
 		return context;
 	}
 
@@ -130,18 +150,21 @@ public class SpringServiceConfigurer<T extends ConfigurableApplicationContext> {
 	 * @param prefix the string prefix to use
 	 * @param configuration the configuration to use for property values
 	 * @return this configurer
+	 * @throws IllegalStateException if no application context has been set
 	 * @throws IllegalStateException if the context has already been refreshed
 	 */
-	public SpringServiceConfigurer<T> registerConfigurationPropertySource(final String prefix, final Configuration configuration) {
-		if (this.context.isActive()) {
+	public SpringServiceConfigurer registerConfigurationPropertySource(final String prefix, final Configuration configuration) {
+		ConfigurableApplicationContext context = this.getRequiredContext();
+		if (context.isActive()) {
 			throw new IllegalStateException("cannot register a property source after the context has been refreshed");
 		}
 
 		final PropertyAccessor accessor = PropertyAccessorFactory.forBeanPropertyAccess(configuration);
 		final PropertySource<?> propertySource = new PropertyAccessorPropertySource("dropwizard-config", prefix, accessor);
-		this.context.getEnvironment()
-		            .getPropertySources()
-		            .addFirst(propertySource);
+		context.getEnvironment()
+		       .getPropertySources()
+		       .addFirst(propertySource);
+
 		return this;
 	}
 
@@ -155,10 +178,29 @@ public class SpringServiceConfigurer<T extends ConfigurableApplicationContext> {
 	 * @param name the name of the bean in the Spring context
 	 * @param configuration the bean to register
 	 * @return this configurer
+	 * @throws IllegalStateException if no application context has been set
 	 */
-	public SpringServiceConfigurer<T> registerConfigurationBean(final String name, final Configuration configuration) {
-		this.refreshContext();
-		context.getBeanFactory().registerSingleton(name, configuration);
+	public SpringServiceConfigurer registerConfigurationBean(final String name, final Configuration configuration) {
+		this.getRequiredRefreshedContext().getBeanFactory().registerSingleton(name, configuration);
+		return this;
+	}
+
+	/**
+	 * Register the Spring Security filter chain with the environment.
+	 * <p>
+	 * Calling this method will refresh the context if it hasn't already been
+	 * refreshed.
+	 * 
+	 * @param urlPattern
+	 * @return this configurer
+	 * @throws IllegalStateException if no application context has been set
+	 */
+	public SpringServiceConfigurer registerSpringSecurityFilter(final String urlPattern) {
+		return this.registerSpringSecurityFilter(urlPattern, "springSecurityFilterChain");
+	}
+
+	protected SpringServiceConfigurer registerSpringSecurityFilter(final String urlPattern, final String name) {
+		this.environment.addFilter(new DelegatingFilterProxy(this.getRequiredRefreshedContext().getBean(name, Filter.class)), urlPattern);
 		return this;
 	}
 
@@ -169,15 +211,14 @@ public class SpringServiceConfigurer<T extends ConfigurableApplicationContext> {
 	 * Calling this method will refresh the context if it hasn't already been
 	 * refreshed.
 	 * 
-	 * @param environment
 	 * @return this configurer
+	 * @throws IllegalStateException if no application context has been set
 	 */
-	public SpringServiceConfigurer<T> registerHealthChecks(Environment environment) {
-		this.refreshContext();
-		final Map<String,HealthCheck> beans = this.context.getBeansOfType(HealthCheck.class);
-		for (Map.Entry<String,HealthCheck> entry : beans.entrySet()) {
+	public SpringServiceConfigurer registerHealthChecks() {
+		final Map<String,HealthCheck> beans = this.getRequiredRefreshedContext().getBeansOfType(HealthCheck.class);
+		for (final Map.Entry<String,HealthCheck> entry : beans.entrySet()) {
 			LOG.info("registering HealthCheck: {}", entry.getValue());
-			environment.addHealthCheck(entry.getValue());
+			this.environment.addHealthCheck(entry.getValue());
 		}
 		return this;
 	}
@@ -189,15 +230,14 @@ public class SpringServiceConfigurer<T extends ConfigurableApplicationContext> {
 	 * Calling this method will refresh the context if it hasn't already been
 	 * refreshed.
 	 * 
-	 * @param environment
 	 * @return this configurer
+	 * @throws IllegalStateException if no application context has been set
 	 */
-	public SpringServiceConfigurer<T> registerProviders(Environment environment) {
-		this.refreshContext();
-		final Map<String, Object> beans = this.context.getBeansWithAnnotation(Provider.class);
-		for (Map.Entry<String,Object> entry : beans.entrySet()) {
+	public SpringServiceConfigurer registerProviders() {
+		final Map<String, Object> beans = this.getRequiredRefreshedContext().getBeansWithAnnotation(Provider.class);
+		for (final Map.Entry<String,Object> entry : beans.entrySet()) {
 			LOG.info("registering @Provider: {}", entry.getValue());
-			environment.addProvider(entry.getValue());
+			this.environment.addProvider(entry.getValue());
 		}
 		return this;
 	}
@@ -209,16 +249,15 @@ public class SpringServiceConfigurer<T extends ConfigurableApplicationContext> {
 	 * Calling this method will refresh the context if it hasn't already been
 	 * refreshed.
 	 * 
-	 * @param environment
 	 * @return this configurer
+	 * @throws IllegalStateException if no application context has been set
 	 */
 	@SuppressWarnings("rawtypes")
-	public SpringServiceConfigurer<T> registerInjectableProviders(Environment environment) {
-		this.refreshContext();
-		final Map<String,InjectableProvider> beans = this.context.getBeansOfType(InjectableProvider.class);
-		for (Map.Entry<String,InjectableProvider> entry : beans.entrySet()) {
+	public SpringServiceConfigurer registerInjectableProviders() {
+		final Map<String,InjectableProvider> beans = this.getRequiredRefreshedContext().getBeansOfType(InjectableProvider.class);
+		for (final Map.Entry<String,InjectableProvider> entry : beans.entrySet()) {
 			LOG.info("registering InjectableProvider: {}", entry.getValue());
-			environment.addProvider(entry.getValue());
+			this.environment.addProvider(entry.getValue());
 		}
 		return this;
 	}
@@ -230,15 +269,14 @@ public class SpringServiceConfigurer<T extends ConfigurableApplicationContext> {
 	 * Calling this method will refresh the context if it hasn't already been
 	 * refreshed.
 	 * 
-	 * @param environment
 	 * @return this configurer
+	 * @throws IllegalStateException if no application context has been set
 	 */
-	public SpringServiceConfigurer<T> registerResources(Environment environment) {
-		this.refreshContext();
-		final Map<String,Object> beans = this.context.getBeansWithAnnotation(Path.class);
-		for (Map.Entry<String,Object> entry : beans.entrySet()) {
+	public SpringServiceConfigurer registerResources() {
+		final Map<String,Object> beans = this.getRequiredRefreshedContext().getBeansWithAnnotation(Path.class);
+		for (final Map.Entry<String,Object> entry : beans.entrySet()) {
 			LOG.info("registering @Path resource: {}", entry.getValue());
-			environment.addResource(entry.getValue());
+			this.environment.addResource(entry.getValue());
 		}
 		return this;
 	}
@@ -250,15 +288,14 @@ public class SpringServiceConfigurer<T extends ConfigurableApplicationContext> {
 	 * Calling this method will refresh the context if it hasn't already been
 	 * refreshed.
 	 * 
-	 * @param environment
 	 * @return this configurer
+	 * @throws IllegalStateException if no application context has been set
 	 */
-	public SpringServiceConfigurer<T> registerTasks(Environment environment) {
-		this.refreshContext();
-		final Map<String,Task> beans = this.context.getBeansOfType(Task.class);
-		for (Map.Entry<String,Task> entry : beans.entrySet()) {
+	public SpringServiceConfigurer registerTasks() {
+		final Map<String,Task> beans = this.getRequiredRefreshedContext().getBeansOfType(Task.class);
+		for (final Map.Entry<String,Task> entry : beans.entrySet()) {
 			LOG.info("registering Task: {}", entry.getValue());
-			environment.addTask(entry.getValue());
+			this.environment.addTask(entry.getValue());
 		}
 		return this;
 	}
@@ -270,40 +307,49 @@ public class SpringServiceConfigurer<T extends ConfigurableApplicationContext> {
 	 * Calling this method will refresh the context if it hasn't already been
 	 * refreshed.
 	 * 
-	 * @param environment
 	 * @return this configurer
+	 * @throws IllegalStateException if no application context has been set
 	 */
-	public SpringServiceConfigurer<T> registerManaged(Environment environment) {
-		this.refreshContext();
-		final Map<String,Managed> beans = this.context.getBeansOfType(Managed.class);
-		for (Map.Entry<String,Managed> entry : beans.entrySet()) {
+	public SpringServiceConfigurer registerManaged() {
+		final Map<String,Managed> beans = this.getRequiredRefreshedContext().getBeansOfType(Managed.class);
+		for (final Map.Entry<String,Managed> entry : beans.entrySet()) {
 			LOG.info("registering Managed: {}", entry.getValue());
-			environment.manage(entry.getValue());
+			this.environment.manage(entry.getValue());
 		}
 		return this;
 	}
 
 	/**
+	 * Register LifeCycle beans defined in the application context with the
+	 * environment.
 	 * <p>
 	 * Calling this method will refresh the context if it hasn't already been
 	 * refreshed.
 	 * 
-	 * @param environment
 	 * @return this configurer
+	 * @throws IllegalStateException if no application context has been set
 	 */
-	public SpringServiceConfigurer<T> registerLifeCycles(Environment environment) {
-		this.refreshContext();
-		final Map<String,LifeCycle> beans = this.context.getBeansOfType(LifeCycle.class);
-		for (Map.Entry<String,LifeCycle> entry : beans.entrySet()) {
+	public SpringServiceConfigurer registerLifeCycles() {
+		final Map<String,LifeCycle> beans = this.getRequiredRefreshedContext().getBeansOfType(LifeCycle.class);
+		for (final Map.Entry<String,LifeCycle> entry : beans.entrySet()) {
 			LOG.info("registering LifeCycle: {}", entry.getValue());
-			environment.manage(entry.getValue());
+			this.environment.manage(entry.getValue());
 		}
 		return this;
 	}
 
-	private void refreshContext() {
-		if (!this.context.isActive()) {
-			this.context.refresh();
+	protected ConfigurableApplicationContext getRequiredContext() {
+		if (this.context == null) {
+			throw new IllegalStateException("no context has been set");
 		}
+		return this.context;
+	}
+
+	protected ConfigurableApplicationContext getRequiredRefreshedContext() {
+		final ConfigurableApplicationContext context = this.getRequiredContext();
+		if (!context.isActive()) {
+			context.refresh();
+		}
+		return context;
 	}
 }

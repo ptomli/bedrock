@@ -5,6 +5,7 @@ import static org.mockito.Mockito.*;
 
 import java.util.Collections;
 
+import javax.servlet.Filter;
 import javax.ws.rs.Path;
 import javax.ws.rs.ext.Provider;
 
@@ -30,23 +31,13 @@ import com.yammer.metrics.core.HealthCheck;
 
 public class SpringServiceConfigurerTest {
 
-	private SpringServiceConfigurer<ConfigurableApplicationContext> configurer;
+	private SpringServiceConfigurer configurer;
 	private ConfigurableApplicationContext springContext;
 	private ConfigurableListableBeanFactory springBeanFactory;
 	private ConfigurableEnvironment springEnvironment;
 
 	private Environment dwEnvironment;
 	private Configuration dwConfiguration;
-
-	public void foo() {
-		SpringServiceConfigurer.forContext(ClassPathXmlApplicationContext.class, "");
-		SpringServiceConfigurer.forContext(AnnotationConfigApplicationContext.class, Object.class);
-
-		SpringServiceConfigurer.forContext(ClassPathXmlApplicationContext.class, "")
-			.registerConfigurationBean(null, null)
-			.registerConfigurationPropertySource("dw", null)
-			.registerHealthChecks(null);
-	}
 
 	@Before
 	public void setup() {
@@ -59,54 +50,63 @@ public class SpringServiceConfigurerTest {
 		when(springContext.getEnvironment()).thenReturn(springEnvironment);
 
 		dwConfiguration = mock(Configuration.class);
-		configurer = SpringServiceConfigurer.forContext(springContext);
-
 		dwEnvironment = mock(Environment.class);
+
+		configurer = SpringServiceConfigurer.forEnvironment(dwEnvironment);
 	}
 
 	@Test
 	public void testClassPathXmlApplicationContext() {
-		springContext = SpringServiceConfigurer.forContext(ClassPathXmlApplicationContext.class).getApplicationContext();
+		springContext = configurer.withContext(ClassPathXmlApplicationContext.class)
+		                          .getApplicationContext();
+
 		assertThat(springContext).isInstanceOf(ClassPathXmlApplicationContext.class);
 	}
 
 	@Test
 	public void testAnnotationConfigApplicationContext() {
-		springContext = SpringServiceConfigurer.forContext(AnnotationConfigApplicationContext.class, Config.class).getApplicationContext();
+		springContext = configurer.withContext(AnnotationConfigApplicationContext.class)
+		                          .getApplicationContext();
+
 		assertThat(springContext).isInstanceOf(AnnotationConfigApplicationContext.class);
+	}
+
+	@Test(expected = IllegalStateException.class)
+	public void testResetRootContextThrowsException() {
+		configurer.withContext(springContext).withContext(springContext);
 	}
 
 	@Test(expected = IllegalStateException.class)
 	public void testRegisterPropertySourceAfterRefreshThrowsException() {
 		when(springContext.isActive()).thenReturn(true);
-		SpringServiceConfigurer.forContext(springContext).registerConfigurationPropertySource(null, null);
+		configurer.withContext(springContext).registerConfigurationPropertySource(null, null);
 	}
 
 	@Test
 	public void testRegisterConfigurationPropertySourceRegistersEnvironmentPropertySource() {
 		MutablePropertySources sources = mock(MutablePropertySources.class);
 		when(springEnvironment.getPropertySources()).thenReturn(sources);
-		configurer.registerConfigurationPropertySource("dw", dwConfiguration);
+		configurer.withContext(springContext).registerConfigurationPropertySource("dw", dwConfiguration);
 		verify(sources).addFirst(Matchers.<PropertySource<?>>any());
 	}
 
 	@Test
 	public void testRegisterConfigurationBeanRefreshesContext() {
 		when(springContext.isActive()).thenReturn(false);
-		configurer.registerConfigurationBean("dw", dwConfiguration);
+		configurer.withContext(springContext).registerConfigurationBean("dw", dwConfiguration);
 		verify(springContext).refresh();
 	}
 
 	@Test
 	public void testRegisterConfigurationBeanRegistersSingleton() {
-		configurer.registerConfigurationBean("dw", dwConfiguration);
+		configurer.withContext(springContext).registerConfigurationBean("dw", dwConfiguration);
 		verify(springBeanFactory).registerSingleton("dw", dwConfiguration);
 	}
 
 	@Test
 	public void testRegisterHealthChecksRefreshesContext() {
 		when(springContext.isActive()).thenReturn(false);
-		configurer.registerHealthChecks(dwEnvironment);
+		configurer.withContext(springContext).registerHealthChecks();
 		verify(springContext).refresh();
 	}
 
@@ -114,14 +114,14 @@ public class SpringServiceConfigurerTest {
 	public void testRegisterHealthChecksRegisters() {
 		HealthCheck o = mock(HealthCheck.class);
 		when(springContext.getBeansOfType(HealthCheck.class)).thenReturn(Collections.singletonMap("o", o));
-		configurer.registerHealthChecks(dwEnvironment);
+		configurer.withContext(springContext).registerHealthChecks();
 		verify(dwEnvironment).addHealthCheck(o);
 	}
 
 	@Test
 	public void testRegisterProvidersRefreshesContext() {
 		when(springContext.isActive()).thenReturn(false);
-		configurer.registerProviders(dwEnvironment);
+		configurer.withContext(springContext).registerProviders();
 		verify(springContext).refresh();
 	}
 
@@ -129,14 +129,14 @@ public class SpringServiceConfigurerTest {
 	public void testRegisterProvidersRegisters() {
 		Object o = new Object();
 		when(springContext.getBeansWithAnnotation(Provider.class)).thenReturn(Collections.singletonMap("o", o));
-		configurer.registerProviders(dwEnvironment);
+		configurer.withContext(springContext).registerProviders();
 		verify(dwEnvironment).addProvider(o);
 	}
 
 	@Test
 	public void testRegisterInjectableProvidersRefreshesContext() {
 		when(springContext.isActive()).thenReturn(false);
-		configurer.registerInjectableProviders(dwEnvironment);
+		configurer.withContext(springContext).registerInjectableProviders();
 		verify(springContext).refresh();
 	}
 
@@ -145,14 +145,14 @@ public class SpringServiceConfigurerTest {
 		@SuppressWarnings("rawtypes")
 		InjectableProvider o = mock(InjectableProvider.class);
 		when(springContext.getBeansOfType(InjectableProvider.class)).thenReturn(Collections.singletonMap("o", o));
-		configurer.registerInjectableProviders(dwEnvironment);
+		configurer.withContext(springContext).registerInjectableProviders();
 		verify(dwEnvironment).addProvider(o);
 	}
 
 	@Test
 	public void testRegisterResourcesRefreshesContext() {
 		when(springContext.isActive()).thenReturn(false);
-		configurer.registerResources(dwEnvironment);
+		configurer.withContext(springContext).registerResources();
 		verify(springContext).refresh();
 	}
 
@@ -160,14 +160,14 @@ public class SpringServiceConfigurerTest {
 	public void testRegisterResourcesRegisters() {
 		Object o = new Object();
 		when(springContext.getBeansWithAnnotation(Path.class)).thenReturn(Collections.singletonMap("o", o));
-		configurer.registerResources(dwEnvironment);
+		configurer.withContext(springContext).registerResources();
 		verify(dwEnvironment).addResource(o);
 	}
 
 	@Test
 	public void testRegisterTasksRefreshesContext() {
 		when(springContext.isActive()).thenReturn(false);
-		configurer.registerTasks(dwEnvironment);
+		configurer.withContext(springContext).registerTasks();
 		verify(springContext).refresh();
 	}
 
@@ -175,14 +175,14 @@ public class SpringServiceConfigurerTest {
 	public void testRegisterTasksRegisters() {
 		Task o = mock(Task.class);
 		when(springContext.getBeansOfType(Task.class)).thenReturn(Collections.singletonMap("o", o));
-		configurer.registerTasks(dwEnvironment);
+		configurer.withContext(springContext).registerTasks();
 		verify(dwEnvironment).addTask(o);
 	}
 
 	@Test
 	public void testRegisterManagedRefreshesContext() {
 		when(springContext.isActive()).thenReturn(false);
-		configurer.registerManaged(dwEnvironment);
+		configurer.withContext(springContext).registerManaged();
 		verify(springContext).refresh();
 	}
 
@@ -190,14 +190,14 @@ public class SpringServiceConfigurerTest {
 	public void testRegisterManagedRegisters() {
 		Managed o = mock(Managed.class);
 		when(springContext.getBeansOfType(Managed.class)).thenReturn(Collections.singletonMap("o", o));
-		configurer.registerManaged(dwEnvironment);
+		configurer.withContext(springContext).registerManaged();
 		verify(dwEnvironment).manage(o);
 	}
 
 	@Test
 	public void testRegisterLifeCyclesRefreshesContext() {
 		when(springContext.isActive()).thenReturn(false);
-		configurer.registerLifeCycles(dwEnvironment);
+		configurer.withContext(springContext).registerLifeCycles();
 		verify(springContext).refresh();
 	}
 
@@ -205,8 +205,16 @@ public class SpringServiceConfigurerTest {
 	public void testRegisterLifeCyclesRegisters() {
 		LifeCycle o = mock(LifeCycle.class);
 		when(springContext.getBeansOfType(LifeCycle.class)).thenReturn(Collections.singletonMap("o", o));
-		configurer.registerLifeCycles(dwEnvironment);
+		configurer.withContext(springContext).registerLifeCycles();
 		verify(dwEnvironment).manage(o);
+	}
+
+	@Test
+	public void testRegisterSecurity() {
+		// it's required that there's a bean called 'springSecurityFilterChain' in the context, of type Filter
+		when(springContext.getBean("springSecurityFilterChain", Filter.class)).thenReturn(mock(Filter.class));
+		configurer.withContext(springContext).registerSpringSecurityFilter("/*");
+		verify(dwEnvironment).addFilter(any(Filter.class), eq("/*"));
 	}
 
 	@org.springframework.context.annotation.Configuration
