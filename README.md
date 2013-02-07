@@ -11,7 +11,7 @@ make it easy to build services using the technologies I commonly use.
 ## Bonus Features
 
  *  [Spring](http://www.springsource.org/spring-framework) for wirin'.
- *  [Spring Integration](http://www.springsource.org/spring-integration) for eapin'.
+ *  [Spring Integration](http://www.springsource.org/spring-integration) for eipin'.
  *  [Spring Security](http://www.springsource.org/spring-security) for securin'.
  *  [HornetQ](http://www.jboss.org/hornetq JMS client) for messagin'.
 
