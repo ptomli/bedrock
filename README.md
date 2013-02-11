@@ -15,6 +15,36 @@ make it easy to build services using the technologies I commonly use.
  *  [Spring Security](http://www.springsource.org/spring-security) for securin'.
  *  [HornetQ](http://www.jboss.org/hornetq JMS client) for messagin'.
 
+## Simple Example
+
+Below is a simple example of how you can easily integrate Spring configured
+beans into the DropWizard startup.
+
+The code below:
+
+ *  Creates a ClassPathXmlApplicationContext, based on the Spring bean
+    configuration files located in `/META-INF/spring/*.xml`.
+ *  Registers a Spring PropertySource with the Spring Environment, whose
+    property values are resolved against the DropWizard configuration,
+    prefixed with "dw.".
+ *  Registers the DropWizard configuration as a Spring bean named "dw".
+ *  Registers any HealthCheck beans, defined in Spring, with the DropWizard
+    environment.
+ *  Registers any @Path annotated beans, defined in Spring, with the DropWizard
+    environment.
+
+```java
+    @Override
+    public void run(Configuration configuration, Environment environment) {
+        SpringServiceConfigurer.forEnvironment(environment)
+            .withContext(ClassPathXmlApplicationContext.class, "classpath:/META-INF/spring/*.xml")
+            .registerConfigurationPropertySource("dw.", configuration)
+            .registerConfigurationPropertySource("dw", configuration)
+            .registerHealthChecks()
+            .registerResources();
+    }
+```
+
 ## Testing Dependencies
 
 I'm a strong believer that consistency makes it a lot easier to deal with code.
