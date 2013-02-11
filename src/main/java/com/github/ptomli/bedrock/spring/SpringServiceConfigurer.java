@@ -11,9 +11,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.PropertyAccessor;
 import org.springframework.beans.PropertyAccessorFactory;
+import org.springframework.context.ApplicationContext;
 import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 import org.springframework.context.support.AbstractRefreshableConfigApplicationContext;
+import org.springframework.context.support.StaticApplicationContext;
 import org.springframework.core.env.PropertySource;
 import org.springframework.web.filter.DelegatingFilterProxy;
 
@@ -61,9 +63,11 @@ public class SpringServiceConfigurer {
 		return new SpringServiceConfigurer(environment);
 	}
 
-	protected static <C extends ConfigurableApplicationContext> C buildContext(final Class<C> clazz) {
+	protected static <C extends ConfigurableApplicationContext> C buildContext(final Class<C> clazz, final ApplicationContext parent) {
 		try {
-			return clazz.newInstance();
+			final C context = clazz.newInstance();
+			context.setParent(parent);
+			return context;
 		}
 		catch (IllegalAccessException ex) {
 			throw new ApplicationContextInstantiationException(ex);
@@ -74,6 +78,7 @@ public class SpringServiceConfigurer {
 	}
 
 	private final Environment environment;
+	private final ConfigurableApplicationContext parent = new StaticApplicationContext();
 	private ConfigurableApplicationContext context;
 
 	protected SpringServiceConfigurer(final Environment environment) {
@@ -106,7 +111,7 @@ public class SpringServiceConfigurer {
 	 * @throws IllegalStateException if the application context has already been set
 	 */
 	public SpringServiceConfigurer withContext(final Class<? extends AbstractRefreshableConfigApplicationContext> clazz, final String... configurations) {
-		final AbstractRefreshableConfigApplicationContext context = buildContext(clazz);
+		final AbstractRefreshableConfigApplicationContext context = buildContext(clazz, parent);
 		context.setConfigLocations(configurations);
 		return this.withContext(context);
 	}
@@ -122,7 +127,7 @@ public class SpringServiceConfigurer {
 	 * @throws IllegalStateException if the application context has already been set
 	 */
 	public SpringServiceConfigurer withContext(final Class<? extends AnnotationConfigApplicationContext> clazz, final Class<?>... configurations) {
-		final AnnotationConfigApplicationContext context = buildContext(clazz);
+		final AnnotationConfigApplicationContext context = buildContext(clazz, parent);
 		if (configurations.length > 0) {
 			context.register(configurations);
 		}
@@ -172,16 +177,25 @@ public class SpringServiceConfigurer {
 	 * Register the configuration instance as a Spring bean, using the provided
 	 * name as the bean name.
 	 * <p>
-	 * Calling this method will refresh the context if it hasn't already been
-	 * refreshed.
+	 * The bean is registered into the parent application context, to allow
+	 * references to the bean to be available during
+	 * {@link ConfigurableApplicationContext#refresh() refresh}.
 	 * 
 	 * @param name the name of the bean in the Spring context
 	 * @param configuration the bean to register
 	 * @return this configurer
 	 * @throws IllegalStateException if no application context has been set
+	 * @throws IllegalStateException if the application context parent was not created by this configurer
 	 */
 	public SpringServiceConfigurer registerConfigurationBean(final String name, final Configuration configuration) {
-		this.getRequiredRefreshedContext().getBeanFactory().registerSingleton(name, configuration);
+		ConfigurableApplicationContext context = this.getRequiredContext();
+		if (context.getParent() != this.parent) {
+			throw new IllegalStateException("Cannot register configuration bean into the parent context, this configurer did not create it");
+		}
+		if (!this.parent.isActive()) {
+			this.parent.refresh();
+		}
+		this.parent.getBeanFactory().registerSingleton(name, configuration);
 		return this;
 	}
 

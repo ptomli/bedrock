@@ -1,6 +1,7 @@
 package com.github.ptomli.bedrock.spring;
 
 import static org.fest.assertions.Assertions.*;
+import static org.mockito.Matchers.*;
 import static org.mockito.Mockito.*;
 
 import java.util.Collections;
@@ -90,17 +91,14 @@ public class SpringServiceConfigurerTest {
 		verify(sources).addFirst(Matchers.<PropertySource<?>>any());
 	}
 
-	@Test
-	public void testRegisterConfigurationBeanRefreshesContext() {
-		when(springContext.isActive()).thenReturn(false);
+	// we can't register a configuration bean into the parent context if it was
+	// created outside of the configurer
+	// TODO: this can possibly be relaxed with the limitation that a configuration bean
+	//       registered into the same context is not available during refresh
+	@Test(expected = IllegalStateException.class)
+	public void registerConfigurationBeanWithExistingParentThrowsException() {
+		when(springContext.getParent()).thenReturn(mock(ConfigurableApplicationContext.class));
 		configurer.withContext(springContext).registerConfigurationBean("dw", dwConfiguration);
-		verify(springContext).refresh();
-	}
-
-	@Test
-	public void testRegisterConfigurationBeanRegistersSingleton() {
-		configurer.withContext(springContext).registerConfigurationBean("dw", dwConfiguration);
-		verify(springBeanFactory).registerSingleton("dw", dwConfiguration);
 	}
 
 	@Test
