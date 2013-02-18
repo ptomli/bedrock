@@ -137,8 +137,8 @@
 			<artifactId>hornetq-jms-client</artifactId>
 		</dependency>
 		<dependency>
-			<groupId>javax.jms</groupId>
-			<artifactId>jms</artifactId>
+			<groupId>org.jboss.javaee</groupId>
+			<artifactId>jboss-jms-api</artifactId>
 			<scope>runtime</scope>
 		</dependency>
 
