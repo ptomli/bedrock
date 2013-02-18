@@ -366,6 +366,8 @@
 				<version>2.4</version>
 				<configuration>
 					<preparationGoals>clean test</preparationGoals>
+					<autoVersionSubmodules>true</autoVersionSubmodules>
+					<mavenExecutorId>forked-path</mavenExecutorId>
 				</configuration>
 			</plugin>
 		</plugins>
