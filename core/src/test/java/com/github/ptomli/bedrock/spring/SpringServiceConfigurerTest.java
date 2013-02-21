@@ -14,6 +14,7 @@ import org.eclipse.jetty.util.component.LifeCycle;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Matchers;
+import org.mockito.Mockito;
 import org.springframework.beans.factory.config.ConfigurableListableBeanFactory;
 import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
@@ -70,6 +71,42 @@ public class SpringServiceConfigurerTest {
 		                          .getApplicationContext();
 
 		assertThat(springContext).isInstanceOf(AnnotationConfigApplicationContext.class);
+	}
+
+	@Test
+	public void testContextConfigurationWithClassPathXmlApplicationContext() {
+		SpringContextConfiguration config = mock(SpringContextConfiguration.class);
+		Mockito.<Class<?>>when(config.getApplicationContextClass()).thenReturn(ClassPathXmlApplicationContext.class);
+		when(config.getConfigLocations()).thenReturn(new String[] {});
+		when(config.getProfiles()).thenReturn(new String[] {});
+		when(config.getPropertySources()).thenReturn(new PropertySource<?>[] {});
+
+		springContext = configurer.withContextConfiguration(config)
+		                          .getApplicationContext();
+
+		assertThat(springContext).isInstanceOf(ClassPathXmlApplicationContext.class);
+	}
+
+	@Test
+	public void testContextConfigurationWithAnnotationConfigApplicationContext() {
+		SpringContextConfiguration config = mock(SpringContextConfiguration.class);
+		Mockito.<Class<?>>when(config.getApplicationContextClass()).thenReturn(AnnotationConfigApplicationContext.class);
+		when(config.getConfigLocations()).thenReturn(new String[] {});
+		when(config.getProfiles()).thenReturn(new String[] {});
+		when(config.getPropertySources()).thenReturn(new PropertySource<?>[] {});
+
+		springContext = configurer.withContextConfiguration(config)
+		                          .getApplicationContext();
+
+		assertThat(springContext).isInstanceOf(AnnotationConfigApplicationContext.class);
+	}
+
+	@Test(expected = ApplicationContextInstantiationException.class)
+	public void testContextConfigurationWithUnknowngApplicationContext() {
+		SpringContextConfiguration config = mock(SpringContextConfiguration.class);
+		Mockito.<Class<?>>when(config.getApplicationContextClass()).thenReturn(ConfigurableApplicationContext.class);
+
+		configurer.withContextConfiguration(config);
 	}
 
 	@Test(expected = IllegalStateException.class)

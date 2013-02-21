@@ -16,6 +16,7 @@ import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 import org.springframework.context.support.AbstractRefreshableConfigApplicationContext;
 import org.springframework.context.support.StaticApplicationContext;
+import org.springframework.core.env.ConfigurableEnvironment;
 import org.springframework.core.env.PropertySource;
 import org.springframework.web.filter.DelegatingFilterProxy;
 
@@ -132,6 +133,48 @@ public class SpringServiceConfigurer {
 			context.register(configurations);
 		}
 		return this.withContext(context);
+	}
+
+	/**
+	 * Create a new application context based on the provided
+	 * {@link SpringContextConfiguration}.
+	 * 
+	 * @param configuration the application context configuration
+	 * @return this configurer
+	 * @throws ApplicationContextInstantiationException if there was a problem creating the application context
+	 * @throws IllegalStateException if the application context has already been set
+	 */
+	public SpringServiceConfigurer withContextConfiguration(SpringContextConfiguration configuration) {
+		Class<? extends ConfigurableApplicationContext> clazz = configuration.getApplicationContextClass();
+		if (AbstractRefreshableConfigApplicationContext.class.isAssignableFrom(clazz)) {
+			this.withContext(clazz.asSubclass(AbstractRefreshableConfigApplicationContext.class), configuration.getConfigLocations());
+		}
+		else if (AnnotationConfigApplicationContext.class.isAssignableFrom(clazz)) {
+			this.withContext(clazz.asSubclass(AnnotationConfigApplicationContext.class), new Class[] {});
+			AnnotationConfigApplicationContext ctx = (AnnotationConfigApplicationContext) this.context;
+			for (String location : configuration.getConfigLocations()) {
+				try {
+					Class<?> config = Class.forName(location);
+					if (config.isAnnotationPresent(org.springframework.context.annotation.Configuration.class)) {
+						ctx.register(config);
+					}
+				}
+				catch (ClassNotFoundException ex) {
+					ctx.scan(location);
+				}
+			}
+		}
+		else {
+			throw new ApplicationContextInstantiationException("Unknown ConfigurableApplicationContext subclass " + clazz.getCanonicalName());
+		}
+
+		ConfigurableEnvironment env = this.context.getEnvironment();
+		env.setActiveProfiles(configuration.getProfiles());
+		for (PropertySource<?> ps : configuration.getPropertySources()) {
+			env.getPropertySources().addFirst(ps);
+		}
+
+		return this;
 	}
 
 	/**

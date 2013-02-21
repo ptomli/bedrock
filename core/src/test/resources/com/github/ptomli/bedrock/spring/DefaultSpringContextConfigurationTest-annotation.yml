@@ -1,0 +1,7 @@
+
+spring:
+    class: org.springframework.context.annotation.AnnotationConfigApplicationContext
+    locations:
+      - com.github.ptomli.bedrock
+    profiles:
+      - production
