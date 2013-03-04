@@ -1,11 +1,10 @@
 package com.github.ptomli.bedrock.spring;
 
-import static org.fest.assertions.Assertions.*;
-import static org.mockito.Matchers.*;
-import static org.mockito.Mockito.*;
+import static org.fest.assertions.api.Assertions.*;
 
 import java.io.File;
 
+import org.fest.assertions.api.Assertions;
 import org.junit.Test;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 import org.springframework.context.support.ClassPathXmlApplicationContext;
@@ -25,7 +24,7 @@ public class DefaultSpringContextConfigurationTest {
 		MyConfiguration c = f.build(new File(cl.getResource("com/github/ptomli/bedrock/spring/DefaultSpringContextConfigurationTest-empty.yml").toURI()));
 
 		assertThat(c.spring).isNotNull();
-		assertThat(c.spring.getApplicationContextClass()).isEqualTo(ClassPathXmlApplicationContext.class);
+		Assertions.<Class<?>>assertThat(c.spring.getApplicationContextClass()).isEqualTo(ClassPathXmlApplicationContext.class);
 		assertThat(c.spring.getConfigLocations()).isEqualTo(new String[] { "/META-INF/spring/*.xml" });
 		assertThat(c.spring.getProfiles()).isEmpty();
 		assertThat(c.spring.getPropertySources()).isEmpty();
@@ -37,7 +36,7 @@ public class DefaultSpringContextConfigurationTest {
 		MyConfiguration c = f.build(new File(cl.getResource("com/github/ptomli/bedrock/spring/DefaultSpringContextConfigurationTest-annotation.yml").toURI()));
 
 		assertThat(c.spring).isNotNull();
-		assertThat(c.spring.getApplicationContextClass()).isEqualTo(AnnotationConfigApplicationContext.class);
+		Assertions.<Class<?>>assertThat(c.spring.getApplicationContextClass()).isEqualTo(AnnotationConfigApplicationContext.class);
 		assertThat(c.spring.getConfigLocations()).isEqualTo(new String[] { "com.github.ptomli.bedrock" });
 		assertThat(c.spring.getProfiles()).isEqualTo(new String[] { "production" });
 		assertThat(c.spring.getPropertySources()).isEmpty();

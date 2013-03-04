@@ -1,6 +1,6 @@
 package com.github.ptomli.bedrock.hornetq;
 
-import static org.fest.assertions.Assertions.*;
+import static org.fest.assertions.api.Assertions.*;
 
 import org.hornetq.jms.client.HornetQConnectionFactory;
 import org.junit.Test;

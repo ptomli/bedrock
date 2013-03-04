@@ -1,6 +1,6 @@
 package com.github.ptomli.bedrock.spring;
 
-import static org.fest.assertions.Assertions.*;
+import static org.fest.assertions.api.Assertions.*;
 import static org.mockito.Matchers.*;
 import static org.mockito.Mockito.*;
 

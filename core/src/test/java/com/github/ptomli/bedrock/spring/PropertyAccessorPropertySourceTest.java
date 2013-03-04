@@ -1,7 +1,7 @@
 package com.github.ptomli.bedrock.spring;
 
 import static org.mockito.Mockito.*;
-import static org.fest.assertions.Assertions.*;
+import static org.fest.assertions.api.Assertions.*;
 
 import org.junit.Before;
 import org.junit.Test;
