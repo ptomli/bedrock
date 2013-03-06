@@ -86,6 +86,7 @@
 	</profiles>
 
 	<properties>
+		<dropwizard.version>0.6.1</dropwizard.version>
 		<hornetq.version>2.2.21.Final</hornetq.version>
 		<spring.version>3.1.4.RELEASE</spring.version>
 		<spring-integration.version>2.2.1.RELEASE</spring-integration.version>
@@ -96,13 +97,43 @@
 		<dependencies>
 			<dependency>
 				<groupId>com.yammer.dropwizard</groupId>
+				<artifactId>dropwizard-auth</artifactId>
+				<version>${dropwizard.version}</version>
+			</dependency>
+			<dependency>
+				<groupId>com.yammer.dropwizard</groupId>
 				<artifactId>dropwizard-core</artifactId>
-				<version>0.6.1</version>
+				<version>${dropwizard.version}</version>
+			</dependency>
+			<dependency>
+				<groupId>com.yammer.dropwizard</groupId>
+				<artifactId>dropwizard-client</artifactId>
+				<version>${dropwizard.version}</version>
+			</dependency>
+			<dependency>
+				<groupId>com.yammer.dropwizard</groupId>
+				<artifactId>dropwizard-hibernate</artifactId>
+				<version>${dropwizard.version}</version>
+			</dependency>
+			<dependency>
+				<groupId>com.yammer.dropwizard</groupId>
+				<artifactId>dropwizard-jdbi</artifactId>
+				<version>${dropwizard.version}</version>
+			</dependency>
+			<dependency>
+				<groupId>com.yammer.dropwizard</groupId>
+				<artifactId>dropwizard-migrations</artifactId>
+				<version>${dropwizard.version}</version>
 			</dependency>
 			<dependency>
 				<groupId>com.yammer.dropwizard</groupId>
 				<artifactId>dropwizard-testing</artifactId>
-				<version>0.6.1</version>
+				<version>${dropwizard.version}</version>
+			</dependency>
+			<dependency>
+				<groupId>com.yammer.dropwizard</groupId>
+				<artifactId>dropwizard-views</artifactId>
+				<version>${dropwizard.version}</version>
 			</dependency>
 
 			<dependency>
