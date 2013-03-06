@@ -187,6 +187,26 @@ public class SpringServiceConfigurer {
 	}
 
 	/**
+	 * Register the DropWizard {@link Environment} as a Spring bean.
+	 * 
+	 * @param name the name of the bean in the Spring context
+	 * @return this configurer
+	 * @throws IllegalStateException if no application context has been set
+	 * @throws IllegalStateException if the application context parent was not created by this configurer
+	 */
+	public SpringServiceConfigurer registerEnvironment(String name) {
+		ConfigurableApplicationContext ctx = this.getRequiredContext();
+		if (ctx.getParent() != this.parent) {
+			throw new IllegalStateException("Cannot register environment bean into the parent context, this configurer did not create it");
+		}
+		if (!this.parent.isActive()) {
+			this.parent.refresh();
+		}
+		this.parent.getBeanFactory().registerSingleton(name, this.environment);
+		return this;
+	}
+
+	/**
 	 * Register a PropertySource into the Spring Environment for use with a
 	 * PropertySourcesPlaceholderConfigurer.
 	 * <p>

@@ -32,6 +32,7 @@ import com.yammer.metrics.core.HealthCheck;
 
 
 public class SpringServiceConfigurerTest {
+	private static final String EMPTY_CONTEXT = "com/github/ptomli/bedrock/spring/empty-context.xml";
 
 	private SpringServiceConfigurer configurer;
 	private ConfigurableApplicationContext springContext;
@@ -118,6 +119,16 @@ public class SpringServiceConfigurerTest {
 	public void testRegisterPropertySourceAfterRefreshThrowsException() {
 		when(springContext.isActive()).thenReturn(true);
 		configurer.withContext(springContext).registerConfigurationPropertySource(null, null);
+	}
+
+	@Test
+	public void testRegisterEnvironment() {
+		configurer.withContext(ClassPathXmlApplicationContext.class, EMPTY_CONTEXT).registerEnvironment("env");
+		ConfigurableApplicationContext context = configurer.getApplicationContext();
+		if (!context.isActive()) {
+			context.refresh();
+		}
+		assertThat(context.getBean("env")).isSameAs(dwEnvironment);
 	}
 
 	@Test
