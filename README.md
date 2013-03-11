@@ -15,6 +15,16 @@ make it easy to build services using the technologies I commonly use.
  *  [Spring Security](http://www.springsource.org/spring-security) for securin'.
  *  [HornetQ](http://www.jboss.org/hornetq JMS client) for messagin'.
 
+## Getting Started
+
+```xml
+	<dependency>
+		<groupId>com.github.ptomli.bedrock</groupId>
+		<artifactId>bedrock-core</artifactId>
+		<version>1.1.0-SNAPSHOT</version>
+	</dependency>
+```
+
 ## Simple Example
 
 Below is a simple example of how you can easily integrate Spring configured
