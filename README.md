@@ -39,7 +39,7 @@ The code below:
         SpringServiceConfigurer.forEnvironment(environment)
             .withContext(ClassPathXmlApplicationContext.class, "classpath:/META-INF/spring/*.xml")
             .registerConfigurationPropertySource("dw.", configuration)
-            .registerConfigurationPropertySource("dw", configuration)
+            .registerConfigurationBean("dw", configuration)
             .registerHealthChecks()
             .registerResources();
     }
