@@ -1,5 +1,12 @@
 language: java
+
 jdk:
   - oraclejdk7
   - openjdk7
 
+install: echo "I trust Maven."
+
+script: mvn verify
+
+after_success:
+  - mvn cobertura:cobertura coveralls:cobertura

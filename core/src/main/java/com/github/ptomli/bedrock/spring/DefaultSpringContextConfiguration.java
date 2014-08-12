@@ -1,5 +1,7 @@
 package com.github.ptomli.bedrock.spring;
 
+import java.util.Arrays;
+
 import io.dropwizard.Configuration;
 
 import org.springframework.context.ConfigurableApplicationContext;
@@ -41,12 +43,12 @@ public class DefaultSpringContextConfiguration implements SpringContextConfigura
 
 	@Override
 	public String[] getConfigLocations() {
-		return this.locations;
+		return Arrays.copyOf(this.locations, this.locations.length);
 	}
 
 	@Override
 	public String[] getProfiles() {
-		return this.profiles;
+		return Arrays.copyOf(this.profiles, this.profiles.length);
 	}
 
 	@Override
