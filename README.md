@@ -69,8 +69,8 @@ line.
 
 # Build Status
 
-[![Build Status](https://travis-ci.org/ptomli/bedrock.png?branch=master)](https://travis-ci.org/ptomli/bedrock)
-[![Coverage Status](https://coveralls.io/repos/ptomli/bedrock/badge.png)](https://coveralls.io/r/ptomli/bedrock)
+[![Build Status](https://img.shields.io/travis/ptomli/bedrock/master.svg?style=flat)](https://travis-ci.org/ptomli/bedrock)
+[![Coverage Status](https://img.shields.io/coveralls/ptomli/bedrock.svg?style=flat)](https://coveralls.io/r/ptomli/bedrock)
 
 # License
 
