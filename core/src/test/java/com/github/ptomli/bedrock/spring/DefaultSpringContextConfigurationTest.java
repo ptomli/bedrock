@@ -1,27 +1,36 @@
 package com.github.ptomli.bedrock.spring;
 
 import static org.fest.assertions.api.Assertions.*;
+import io.dropwizard.Configuration;
+import io.dropwizard.configuration.ConfigurationFactory;
+import io.dropwizard.jackson.Jackson;
 
 import java.io.File;
 
+import javax.validation.Validation;
+
 import org.fest.assertions.api.Assertions;
+import org.junit.Before;
 import org.junit.Test;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 import org.springframework.context.support.ClassPathXmlApplicationContext;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.yammer.dropwizard.config.Configuration;
-import com.yammer.dropwizard.config.ConfigurationFactory;
-import com.yammer.dropwizard.validation.Validator;
 
 public class DefaultSpringContextConfigurationTest {
 
-	ClassLoader cl = DefaultSpringContextConfigurationTest.class.getClassLoader();
+	private ClassLoader cl = DefaultSpringContextConfigurationTest.class.getClassLoader();
+	private ConfigurationFactory<MyConfiguration> cf;
+
+	@Before
+	public void setup() {
+		cf = new ConfigurationFactory<MyConfiguration>(MyConfiguration.class, Validation.buildDefaultValidatorFactory().getValidator(), Jackson.newObjectMapper(), "config");
+	}
 
 	@Test
 	public void testDefaultValues() throws Exception {
-		ConfigurationFactory<MyConfiguration> f = ConfigurationFactory.forClass(MyConfiguration.class, new Validator());
-		MyConfiguration c = f.build(new File(cl.getResource("com/github/ptomli/bedrock/spring/DefaultSpringContextConfigurationTest-empty.yml").toURI()));
+		MyConfiguration c = cf.build(new File(cl.getResource("com/github/ptomli/bedrock/spring/DefaultSpringContextConfigurationTest-empty.yml").toURI()));
 
 		assertThat(c.spring).isNotNull();
 		Assertions.<Class<?>>assertThat(c.spring.getApplicationContextClass()).isEqualTo(ClassPathXmlApplicationContext.class);
@@ -32,8 +41,7 @@ public class DefaultSpringContextConfigurationTest {
 
 	@Test
 	public void testAnnotationContext() throws Exception {
-		ConfigurationFactory<MyConfiguration> f = ConfigurationFactory.forClass(MyConfiguration.class, new Validator());
-		MyConfiguration c = f.build(new File(cl.getResource("com/github/ptomli/bedrock/spring/DefaultSpringContextConfigurationTest-annotation.yml").toURI()));
+		MyConfiguration c = cf.build(new File(cl.getResource("com/github/ptomli/bedrock/spring/DefaultSpringContextConfigurationTest-annotation.yml").toURI()));
 
 		assertThat(c.spring).isNotNull();
 		Assertions.<Class<?>>assertThat(c.spring.getApplicationContextClass()).isEqualTo(AnnotationConfigApplicationContext.class);
@@ -42,6 +50,7 @@ public class DefaultSpringContextConfigurationTest {
 		assertThat(c.spring.getPropertySources()).isEmpty();
 	}
 
+	@JsonIgnoreProperties(ignoreUnknown = true)
 	public static class MyConfiguration extends Configuration {
 		@JsonProperty
 		private DefaultSpringContextConfiguration spring = new DefaultSpringContextConfiguration();

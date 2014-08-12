@@ -1,7 +1,14 @@
 package com.github.ptomli.bedrock.spring;
 
+import io.dropwizard.Configuration;
+import io.dropwizard.lifecycle.Managed;
+import io.dropwizard.servlets.tasks.Task;
+import io.dropwizard.setup.Environment;
+
+import java.util.EnumSet;
 import java.util.Map;
 
+import javax.servlet.DispatcherType;
 import javax.servlet.Filter;
 import javax.ws.rs.Path;
 import javax.ws.rs.ext.Provider;
@@ -20,12 +27,8 @@ import org.springframework.core.env.ConfigurableEnvironment;
 import org.springframework.core.env.PropertySource;
 import org.springframework.web.filter.DelegatingFilterProxy;
 
+import com.codahale.metrics.health.HealthCheck;
 import com.sun.jersey.spi.inject.InjectableProvider;
-import com.yammer.dropwizard.config.Configuration;
-import com.yammer.dropwizard.config.Environment;
-import com.yammer.dropwizard.lifecycle.Managed;
-import com.yammer.dropwizard.tasks.Task;
-import com.yammer.metrics.core.HealthCheck;
 
 /**
  * Utility class to assist in creation of a Spring ApplicationContext, and the
@@ -42,8 +45,8 @@ import com.yammer.metrics.core.HealthCheck;
  * public void run(Configuration configuration, Environment environment) {
  *     SpringServiceConfigurer.forEnvironment(environment)
  *         .withContext(ClassPathXmlApplicationContext.class, "classpath:/META-INF/spring/applicationContext.xml")
- *         .registerConfigurationPropertySource("dw.", configuration)
- *         .registerConfigurationBean("dw", configuration)
+ *         .registerConfigurationPropertySource("config.", configuration)
+ *         .registerConfigurationBean("config", configuration)
  *         .registerSpringSecurityFilter("/*")
  *         .registerHealthChecks()
  *         .registerResources();
@@ -277,7 +280,9 @@ public class SpringServiceConfigurer {
 	}
 
 	protected SpringServiceConfigurer registerSpringSecurityFilter(final String urlPattern, final String name) {
-		this.environment.addFilter(new DelegatingFilterProxy(this.getRequiredRefreshedContext().getBean(name, Filter.class)), urlPattern);
+		this.environment.servlets()
+			.addFilter(name, new DelegatingFilterProxy(this.getRequiredRefreshedContext().getBean(name, Filter.class)))
+			.addMappingForUrlPatterns(EnumSet.of(DispatcherType.REQUEST), true, urlPattern);
 		return this;
 	}
 
@@ -295,7 +300,7 @@ public class SpringServiceConfigurer {
 		final Map<String,HealthCheck> beans = this.getRequiredRefreshedContext().getBeansOfType(HealthCheck.class);
 		for (final Map.Entry<String,HealthCheck> entry : beans.entrySet()) {
 			LOG.info("registering HealthCheck: {}", entry.getValue());
-			this.environment.addHealthCheck(entry.getValue());
+			this.environment.healthChecks().register(entry.getKey(), entry.getValue());
 		}
 		return this;
 	}
@@ -314,7 +319,7 @@ public class SpringServiceConfigurer {
 		final Map<String, Object> beans = this.getRequiredRefreshedContext().getBeansWithAnnotation(Provider.class);
 		for (final Map.Entry<String,Object> entry : beans.entrySet()) {
 			LOG.info("registering @Provider: {}", entry.getValue());
-			this.environment.addProvider(entry.getValue());
+			this.environment.jersey().register(entry.getValue());
 		}
 		return this;
 	}
@@ -334,7 +339,7 @@ public class SpringServiceConfigurer {
 		final Map<String,InjectableProvider> beans = this.getRequiredRefreshedContext().getBeansOfType(InjectableProvider.class);
 		for (final Map.Entry<String,InjectableProvider> entry : beans.entrySet()) {
 			LOG.info("registering InjectableProvider: {}", entry.getValue());
-			this.environment.addProvider(entry.getValue());
+			this.environment.jersey().register(entry.getValue());
 		}
 		return this;
 	}
@@ -353,7 +358,7 @@ public class SpringServiceConfigurer {
 		final Map<String,Object> beans = this.getRequiredRefreshedContext().getBeansWithAnnotation(Path.class);
 		for (final Map.Entry<String,Object> entry : beans.entrySet()) {
 			LOG.info("registering @Path resource: {}", entry.getValue());
-			this.environment.addResource(entry.getValue());
+			this.environment.jersey().register(entry.getValue());
 		}
 		return this;
 	}
@@ -372,7 +377,7 @@ public class SpringServiceConfigurer {
 		final Map<String,Task> beans = this.getRequiredRefreshedContext().getBeansOfType(Task.class);
 		for (final Map.Entry<String,Task> entry : beans.entrySet()) {
 			LOG.info("registering Task: {}", entry.getValue());
-			this.environment.addTask(entry.getValue());
+			this.environment.admin().addTask(entry.getValue());
 		}
 		return this;
 	}
@@ -391,7 +396,7 @@ public class SpringServiceConfigurer {
 		final Map<String,Managed> beans = this.getRequiredRefreshedContext().getBeansOfType(Managed.class);
 		for (final Map.Entry<String,Managed> entry : beans.entrySet()) {
 			LOG.info("registering Managed: {}", entry.getValue());
-			this.environment.manage(entry.getValue());
+			this.environment.lifecycle().manage(entry.getValue());
 		}
 		return this;
 	}
@@ -410,7 +415,7 @@ public class SpringServiceConfigurer {
 		final Map<String,LifeCycle> beans = this.getRequiredRefreshedContext().getBeansOfType(LifeCycle.class);
 		for (final Map.Entry<String,LifeCycle> entry : beans.entrySet()) {
 			LOG.info("registering LifeCycle: {}", entry.getValue());
-			this.environment.manage(entry.getValue());
+			this.environment.lifecycle().manage(entry.getValue());
 		}
 		return this;
 	}
@@ -425,6 +430,17 @@ public class SpringServiceConfigurer {
 	protected ConfigurableApplicationContext getRequiredRefreshedContext() {
 		final ConfigurableApplicationContext context = this.getRequiredContext();
 		if (!context.isActive()) {
+
+			// refresh the parent if necessary
+			ApplicationContext parent = context.getParent();
+			if (parent != null) {
+				if (parent instanceof ConfigurableApplicationContext) {
+					if (!((ConfigurableApplicationContext) parent).isActive()) {
+						((ConfigurableApplicationContext) parent).refresh();
+					}
+				}
+			}
+
 			context.refresh();
 		}
 		return context;

@@ -3,10 +3,21 @@ package com.github.ptomli.bedrock.spring;
 import static org.fest.assertions.api.Assertions.*;
 import static org.mockito.Matchers.*;
 import static org.mockito.Mockito.*;
+import io.dropwizard.Configuration;
+import io.dropwizard.jersey.setup.JerseyEnvironment;
+import io.dropwizard.jetty.setup.ServletEnvironment;
+import io.dropwizard.lifecycle.Managed;
+import io.dropwizard.lifecycle.setup.LifecycleEnvironment;
+import io.dropwizard.servlets.tasks.Task;
+import io.dropwizard.setup.AdminEnvironment;
+import io.dropwizard.setup.Environment;
 
 import java.util.Collections;
+import java.util.EnumSet;
 
+import javax.servlet.DispatcherType;
 import javax.servlet.Filter;
+import javax.servlet.FilterRegistration;
 import javax.ws.rs.Path;
 import javax.ws.rs.ext.Provider;
 
@@ -23,12 +34,9 @@ import org.springframework.core.env.ConfigurableEnvironment;
 import org.springframework.core.env.MutablePropertySources;
 import org.springframework.core.env.PropertySource;
 
+import com.codahale.metrics.health.HealthCheck;
+import com.codahale.metrics.health.HealthCheckRegistry;
 import com.sun.jersey.spi.inject.InjectableProvider;
-import com.yammer.dropwizard.config.Configuration;
-import com.yammer.dropwizard.config.Environment;
-import com.yammer.dropwizard.lifecycle.Managed;
-import com.yammer.dropwizard.tasks.Task;
-import com.yammer.metrics.core.HealthCheck;
 
 
 public class SpringServiceConfigurerTest {
@@ -42,6 +50,12 @@ public class SpringServiceConfigurerTest {
 	private Environment dwEnvironment;
 	private Configuration dwConfiguration;
 
+	private ServletEnvironment servlets;
+	private JerseyEnvironment jersey;
+	private AdminEnvironment admin;
+	private LifecycleEnvironment lifecycle;
+	private HealthCheckRegistry healthchecks;
+
 	@Before
 	public void setup() {
 		springContext = mock(ConfigurableApplicationContext.class);
@@ -52,8 +66,20 @@ public class SpringServiceConfigurerTest {
 		springEnvironment = mock(ConfigurableEnvironment.class);
 		when(springContext.getEnvironment()).thenReturn(springEnvironment);
 
+		servlets = mock(ServletEnvironment.class);
+		jersey = mock(JerseyEnvironment.class);
+		admin = mock(AdminEnvironment.class);
+		lifecycle = mock(LifecycleEnvironment.class);
+		healthchecks = mock(HealthCheckRegistry.class);
+
 		dwConfiguration = mock(Configuration.class);
+
 		dwEnvironment = mock(Environment.class);
+		when(dwEnvironment.servlets()).thenReturn(servlets);
+		when(dwEnvironment.jersey()).thenReturn(jersey);
+		when(dwEnvironment.admin()).thenReturn(admin);
+		when(dwEnvironment.lifecycle()).thenReturn(lifecycle);
+		when(dwEnvironment.healthChecks()).thenReturn(healthchecks);
 
 		configurer = SpringServiceConfigurer.forEnvironment(dwEnvironment);
 	}
@@ -161,7 +187,7 @@ public class SpringServiceConfigurerTest {
 		HealthCheck o = mock(HealthCheck.class);
 		when(springContext.getBeansOfType(HealthCheck.class)).thenReturn(Collections.singletonMap("o", o));
 		configurer.withContext(springContext).registerHealthChecks();
-		verify(dwEnvironment).addHealthCheck(o);
+		verify(healthchecks).register(anyString(), eq(o));
 	}
 
 	@Test
@@ -176,7 +202,7 @@ public class SpringServiceConfigurerTest {
 		Object o = new Object();
 		when(springContext.getBeansWithAnnotation(Provider.class)).thenReturn(Collections.singletonMap("o", o));
 		configurer.withContext(springContext).registerProviders();
-		verify(dwEnvironment).addProvider(o);
+		verify(jersey).register(o);
 	}
 
 	@Test
@@ -192,7 +218,7 @@ public class SpringServiceConfigurerTest {
 		InjectableProvider o = mock(InjectableProvider.class);
 		when(springContext.getBeansOfType(InjectableProvider.class)).thenReturn(Collections.singletonMap("o", o));
 		configurer.withContext(springContext).registerInjectableProviders();
-		verify(dwEnvironment).addProvider(o);
+		verify(jersey).register(o);
 	}
 
 	@Test
@@ -207,7 +233,7 @@ public class SpringServiceConfigurerTest {
 		Object o = new Object();
 		when(springContext.getBeansWithAnnotation(Path.class)).thenReturn(Collections.singletonMap("o", o));
 		configurer.withContext(springContext).registerResources();
-		verify(dwEnvironment).addResource(o);
+		verify(jersey).register(o);
 	}
 
 	@Test
@@ -222,7 +248,7 @@ public class SpringServiceConfigurerTest {
 		Task o = mock(Task.class);
 		when(springContext.getBeansOfType(Task.class)).thenReturn(Collections.singletonMap("o", o));
 		configurer.withContext(springContext).registerTasks();
-		verify(dwEnvironment).addTask(o);
+		 verify(admin).addTask(o);
 	}
 
 	@Test
@@ -237,7 +263,7 @@ public class SpringServiceConfigurerTest {
 		Managed o = mock(Managed.class);
 		when(springContext.getBeansOfType(Managed.class)).thenReturn(Collections.singletonMap("o", o));
 		configurer.withContext(springContext).registerManaged();
-		verify(dwEnvironment).manage(o);
+		verify(lifecycle).manage(o);
 	}
 
 	@Test
@@ -252,15 +278,28 @@ public class SpringServiceConfigurerTest {
 		LifeCycle o = mock(LifeCycle.class);
 		when(springContext.getBeansOfType(LifeCycle.class)).thenReturn(Collections.singletonMap("o", o));
 		configurer.withContext(springContext).registerLifeCycles();
-		verify(dwEnvironment).manage(o);
+		verify(lifecycle).manage(o);
 	}
 
 	@Test
 	public void testRegisterSecurity() {
 		// it's required that there's a bean called 'springSecurityFilterChain' in the context, of type Filter
 		when(springContext.getBean("springSecurityFilterChain", Filter.class)).thenReturn(mock(Filter.class));
+
+		FilterRegistration.Dynamic registration = mock(FilterRegistration.Dynamic.class);
+		when(servlets.addFilter(anyString(), any(Filter.class))).thenReturn(registration);
+
 		configurer.withContext(springContext).registerSpringSecurityFilter("/*");
-		verify(dwEnvironment).addFilter(any(Filter.class), eq("/*"));
+
+		verify(servlets).addFilter(anyString(), any(Filter.class));
+		verify(registration).addMappingForUrlPatterns(eq(EnumSet.of(DispatcherType.REQUEST)), eq(true), eq("/*"));
+	}
+
+	@Test
+	public void testParentContextIsRefreshed() throws Exception {
+		SpringServiceConfigurer.forEnvironment(dwEnvironment)
+			.withContext(ClassPathXmlApplicationContext.class, EMPTY_CONTEXT)
+			.registerResources();
 	}
 
 	@org.springframework.context.annotation.Configuration

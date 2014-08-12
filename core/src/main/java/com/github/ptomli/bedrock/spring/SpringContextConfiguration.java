@@ -11,8 +11,8 @@ import org.springframework.core.env.PropertySource;
  * Interface specifying Spring context configuration, to enable easier
  * context creation based on settings in the DropWizard configuration file.
  * <p>
- * @see {@link DefaultSpringContextConfiguration},
- * {@link SpringServiceConfigurer#withContextConfiguration(SpringContextConfiguration)}
+ * @see DefaultSpringContextConfiguration
+ * @see SpringServiceConfigurer#withContextConfiguration(SpringContextConfiguration)
  *
  */
 public interface SpringContextConfiguration {

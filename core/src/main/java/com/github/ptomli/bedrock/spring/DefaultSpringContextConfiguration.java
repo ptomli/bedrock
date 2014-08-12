@@ -1,11 +1,12 @@
 package com.github.ptomli.bedrock.spring;
 
+import io.dropwizard.Configuration;
+
 import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.context.support.ClassPathXmlApplicationContext;
 import org.springframework.core.env.PropertySource;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.yammer.dropwizard.config.Configuration;
 
 /**
  * The default {@link SpringContextConfiguration} which can be easily used

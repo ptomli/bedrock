@@ -1,18 +1,17 @@
 # A Solid Foundation
 
-[DropWizard](http://github.com/codahale/dropwizard) provides a fantastic base
-on which you can build REST based services. Big up to
-[@codahale](http://github.com/codahale) and [Yammer](https://www.yammer.com/)
-for making this available.
+[DropWizard](http://dropwizard.io) provides a fantastic base on which you can
+build REST based services. Big up to [@codahale](http://github.com/codahale)
+and [Yammer](https://www.yammer.com/) for making this available.
 
 Bedrock takes this basis, adds some libraries and a bit more glue, and tries to
 make it easy to build services using the technologies I commonly use.
 
 ## Bonus Features
 
- *  [Spring](http://www.springsource.org/spring-framework) for wirin'.
- *  [Spring Integration](http://www.springsource.org/spring-integration) for eipin'.
- *  [Spring Security](http://www.springsource.org/spring-security) for securin'.
+ *  [Spring](http://projects.spring.io/spring-framework/) for wirin'.
+ *  [Spring Integration](http://projects.spring.io/spring-integration/) for eipin'.
+ *  [Spring Security](http://projects.spring.io/spring-security/) for securin'.
  *  [HornetQ](http://www.jboss.org/hornetq JMS client) for messagin'.
 
 ## Getting Started
@@ -21,7 +20,7 @@ make it easy to build services using the technologies I commonly use.
 	<dependency>
 		<groupId>com.github.ptomli.bedrock</groupId>
 		<artifactId>bedrock-core</artifactId>
-		<version>1.1.0-SNAPSHOT</version>
+		<version>2.0.0-SNAPSHOT</version>
 	</dependency>
 ```
 
@@ -36,8 +35,8 @@ The code below:
     configuration files located in `/META-INF/spring/*.xml`.
  *  Registers a Spring PropertySource with the Spring Environment, whose
     property values are resolved against the DropWizard configuration,
-    prefixed with "dw.".
- *  Registers the DropWizard configuration as a Spring bean named "dw".
+    prefixed with "config.".
+ *  Registers the DropWizard configuration as a Spring bean named "config".
  *  Registers any HealthCheck beans, defined in Spring, with the DropWizard
     environment.
  *  Registers any @Path annotated beans, defined in Spring, with the DropWizard
@@ -48,8 +47,8 @@ The code below:
     public void run(Configuration configuration, Environment environment) {
         SpringServiceConfigurer.forEnvironment(environment)
             .withContext(ClassPathXmlApplicationContext.class, "classpath:/META-INF/spring/*.xml")
-            .registerConfigurationPropertySource("dw.", configuration)
-            .registerConfigurationBean("dw", configuration)
+            .registerConfigurationPropertySource("config.", configuration)
+            .registerConfigurationBean("config", configuration)
             .registerHealthChecks()
             .registerResources();
     }
@@ -65,16 +64,17 @@ line.
 
  *  Spring Test
  *  Spring Integration Test
- *  FEST Assertions
+ *  AssertJ
  *  Mockito
 
 # Build Status
 
 [![Build Status](https://travis-ci.org/ptomli/bedrock.png?branch=master)](https://travis-ci.org/ptomli/bedrock)
+[![Coverage Status](https://coveralls.io/repos/ptomli/bedrock/badge.png)](https://coveralls.io/r/ptomli/bedrock)
 
 # License
 
-Copyright 2013 Paul Tomlin
+Copyright 2013-2014 Paul Tomlin
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.

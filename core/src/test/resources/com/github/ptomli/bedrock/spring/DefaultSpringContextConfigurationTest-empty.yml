@@ -1,3 +1,2 @@
 # empty, but needs *something* to keep dropwizard happy
-http:
-  port: 8080
+hello: world!
