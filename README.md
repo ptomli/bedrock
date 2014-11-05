@@ -67,10 +67,11 @@ line.
  *  AssertJ
  *  Mockito
 
-# Build Status
+# Status
 
 [![Build Status](https://img.shields.io/travis/ptomli/bedrock/master.svg?style=flat)](https://travis-ci.org/ptomli/bedrock)
 [![Coverage Status](https://img.shields.io/coveralls/ptomli/bedrock.svg?style=flat)](https://coveralls.io/r/ptomli/bedrock)
+[![Maven Central](http://img.shields.io/maven-central/v/com.github.ptomli.bedrock/bedrock-core.svg?style=flat)](http://search.maven.org/#search|gav|1|g:"com.github.ptomli.bedrock"%20AND%20a:"bedrock-core")
 
 # License
 
